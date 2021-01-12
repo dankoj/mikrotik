@@ -1,10 +1,13 @@
 :delay 10;
 :log info "Router Startup script";
+#To retain global variable value it has to be defined in startup
 :global vDHCParray;:global aMessages;
 :global templaststatus "system temp is within spec";
 :global nLastUsers ([user print count-only as-value]);
 :local textMessage ("Router $[/system identity get name] STARTUP $[/system clock get date] $[/system clock get time]");
 :delay 30;
+#Parse function to send message to Telegram app
+#Declare variables and collect statues so thay can be re-checked with Check_Status script
 :global sendmessage [:parse [/system script get send_message source]];
 :local voltage [/system health get voltage];:set $voltage ([:pick $voltage 0 2] . "." . [:pick $voltage 2 3]);
 :global WANinterface "";
@@ -24,6 +27,7 @@
 :delay 60;
 $sendmessage ($textMessage);
 :delay 60;
-:system script run backup;    
+:system script run backup;
+#To retain global variable value statup has to continue running indefinitely 
 :while (1) do={:delay 60;};
 :log info "Router Startup script ENDS";
