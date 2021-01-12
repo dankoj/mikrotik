@@ -3,13 +3,13 @@
 {
   :local botID "bot1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
   :local chatID "123456789";
-#global aMessages has to be declared and refreshed in a router startup script
+#  global aMessages has to be declared and refreshed in a router startup script
   :global aMessages; :local vHasErrors ""; local sMessageText;
     if ($1 != "" ) do={
     do { /tool fetch url="https://api.telegram.org/$botID/sendMessage\?chat_id=$chatID&text=$1" keep-result=no;
        :log info ("Telegram sent: " . ($1));
        } on-error={ if (([:len ([:tostr ($aMessages)])]) < 3500) do={
-# if send fails (no Internet) add current message in the $aMessages array           
+#                      if send fails (no Internet) add current message in the $aMessages array           
                        set $aMessages ($aMessages, $1);
                        :log info ("Telegram FAILED #$[:len $aMessages]: " . ($1)); 
                     } else={:log info ("Telegram FAILED #$[:len $aMessages]: to long: " . ([:len ([:tostr ($aMessages)])]) ) }

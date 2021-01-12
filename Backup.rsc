@@ -1,6 +1,6 @@
-#Mikrotik script to backup RouterOS to email address
-#Email contans key info on the router
+#Mikrotik script to backup RouterOS to email address containing key info on the router
 #Backups are attached to the email, as well as system log
+#This script should be scheduled to run daily/weekly
 #Set email address here:
 :local eAddress "email@domain.com";
 #You need to configure /tool e-mail
