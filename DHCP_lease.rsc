@@ -1,4 +1,5 @@
 #DHCP server lease script
+#DHCP lease time should bne reduced - reccomended to 1h (60 minutes)
 :local vMac;:local vTxt;:local vTxtStr;:local vStatus;:local vHost;:local vComment;:local vAdresa;:local vPrevious;
 # $leaseActMAC is parametar where system set current MAC address
 :set $vMac ($leaseActMAC);
