@@ -2,12 +2,13 @@
 #Check variables and if any significant change send Telegram message
 :local tempstatus;
 :local systemtemp [/system health get temperature];
+:if (systemtemp > "44") do={:set $tempstatus "system temp is elevated"};
 :if (systemtemp > "50") do={:set $tempstatus "system temp is too high"};
 :if (systemtemp > "60") do={:set $tempstatus "system temp is critical"};
-:if (systemtemp < "42") do={:set $tempstatus "system temp is within spec"};
+:if (systemtemp < "44") do={:set $tempstatus "system temp is within spec"};
 :global templaststatus;
 :if ($"tempstatus" != $"templaststatus") do {
-	$sendmessage ("Router $[/system identity get name] $[/system clock get date] $[/system clock get time]" . $tempstatus . ": " . $systemtemp . "C");
+	$sendmessage ("Router $[/system identity get name] $[/system clock get date] $[/system clock get time] " . $tempstatus . ": " . $systemtemp . "C");
 	:set $templaststatus $tempstatus; }
 #Change in number of users can signal that the router has been hacked    
 :local nUsers ([user print count-only as-value]);
