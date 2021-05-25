@@ -2,7 +2,7 @@
 #Check variables and if any significant change send Telegram message
 :local tempstatus;
 :local systemtemp [/system health get temperature];
-:if (systemtemp > "44") do={:set $tempstatus "system temp is elevated"};
+:if (systemtemp > "43") do={:set $tempstatus "system temp is elevated"};
 :if (systemtemp > "50") do={:set $tempstatus "system temp is too high"};
 :if (systemtemp > "60") do={:set $tempstatus "system temp is critical"};
 :if (systemtemp < "44") do={:set $tempstatus "system temp is within spec"};
