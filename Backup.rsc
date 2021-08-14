@@ -1,25 +1,19 @@
-#Mikrotik script to backup RouterOS to email address containing key info on the router
-#Backups are attached to the email, as well as system log
-#This script should be scheduled to run daily/weekly
-#Set email address here:
 :local eAddress "email@domain.com";
 #You need to configure /tool e-mail
+:global sendmessage;
 :local rName ([/system identity get name]);
+$sendmessage ("Mikrotik " . $rName . " backup start to: " . $eAddress);
 :local vDate ([:pick [/system clock get date] 7 11] . [:pick [/system clock get date] 0 3] . [:pick [/system clock get date] 4 6])
-:delay 2;
-#Actual backup to files on the router
 /system backup save name=($rName . "-" . $vDate);
 /export terse hide-sensitive file=($rName . "-" . $vDate);
 :local sFile1 ($rName . "-" . $vDate . ".backup");
 :local sFile2 ($rName . "-" . $vDate . ".rsc");
-#List of files to attach to the email
 :local aFiles {$sFile1;$sFile2};
 :delay 3;
 :local sNewLine ("\r\n");
 :log info ("$rName" . " Mikrotik backup " . $vDate . " " . [/system clock get time] . " START");
 :local voltage [/system health get voltage];
 :set $voltage ([:pick $voltage 0 2] . "." . [:pick $voltage 2 3]);
-#Email body containing info on the router
 :local strBody ($rName  . " Backup " . $vDate . " " . [/system clock get time] );
 :set $strBody ($strBody . $sNewLine . "Temp: $[/system health get temperature]C pow: " . voltage ."V");
 /system package update check-for-updates once
@@ -104,14 +98,12 @@ if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "Wireless
 	:set $strAdd ($strAdd . $sNewLine . "User: $[/ppp active get $int name], Svc: $[/ppp active get $int service], Cid: $[/ppp active get $int caller-id], IP: $[/ppp active get $int address]");
 };	} on-error={:log info "PPP Active Users find failed"};
 if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "PPP active users: " . $strAdd)};
-#Copy log content into files to be attached
 :local nLogFile 1;:local logFile;
 :local sLogContent;:local sLogLine;
 :local lLogContent 0;:local lLogLine;
 :foreach int in=[/log find ] do={
 	:set $sLogLine ([:tostr [/log get $int time]] . " - " . [:tostr [/log get $int topics]] . ": " . [:tostr [/log get $int message]]);
 	:set $lLogLine ([:len ($sLogLine)]);
-#Mirkotik string variable is limited to 4096 bytes, so log file has to be segmented
 	if (($lLogContent + 3 + $lLogLine) > 4000) do={
 		:set $logFile ($rName . "_log_" . $nLogFile);
 		/file print file=$logFile;:set $logFile ($logFile . ".txt");
@@ -121,7 +113,6 @@ if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "PPP acti
 	};
 	:set $sLogContent ($sLogContent . $sNewLine . $sLogLine);
 	:set $lLogContent ($lLogContent + 4 + $lLogLine); };
-#Truncate the log    
 /system logging action set memory memory-lines 1;
 /system logging action set memory memory-lines $totLines;
 :set $logFile ($rName . "_log_" . $nLogFile);
@@ -130,14 +121,15 @@ if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "PPP acti
 :delay 5;
 /file set [/file find name=$logFile] contents=($sLogContent);
 :set $aFiles ($aFiles, $logFile);
-:log info ("$rName" . " Mikrotik backup " . $vDate . " $[/system clock get time]" . \
+:log info ("$rName Mikrotik backup " . $vDate . " $[/system clock get time]" . \
     " Len (body): $[:len $strBody]" . \
 	" Temperature: $[/system health get temperature]C power: " . voltage ."V" . \
 	" SysLog memory lines: " . $curLines . "/" . $totLines . \
 	" User accounts: " . [user print count-only as-value] . \
 	" Attachments: $[:tostr ($aFiles)]"	);    
 :delay 5;
-/tool e-mail send to=$eAddress subject=($rName . " Mikrotik Backup " . $vDate . [/system clock get time]) file=$aFiles body=$strBody;
+:do {/tool e-mail send to=$eAddress subject=($rName . " Mikrotik Backup " . $vDate . [/system clock get time]) file=$aFiles body=$strBody}
 :delay 10;
-#Delete all temporary files
 :foreach sFile in=$aFiles do={/file remove [/file find name=$sFile];};
+$sendmessage ("$rName Mikrotik backup email status: " . [/tool e-mail get last-status]);
+:log info ("Backup script ended");
