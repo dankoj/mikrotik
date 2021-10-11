@@ -18,6 +18,9 @@
 :global currentIP ([/ip cloud get public-address]);
 :local aIntInterface;set $aIntInterface ([/interface detect-internet state print as-value where state="internet"]);
 :global sFirewalls ("RAWs: $[/ip firewall raw print count-only as-value where disabled=no], FILTERs: $[/ip firewall filter print count-only as-value where disabled=no], NATs: $[/ip firewall nat print count-only as-value where disabled=no], MANGLEs: $[/ip firewall mangle print count-only as-value where disabled=no], LAYER7s: $[/ip firewall layer7-protocol print count-only as-value where disabled=no]");
+:global aIfaceS;
+:set $aIfaceS ( [/interface  print as-value where running=yes]);
+:log info ("Running interfaces: " . $aIfaceS);
 :global sIntInterface "";
 :foreach i in=$aIntInterface do={:set $sIntInterface ($sIntInterface . ($i->"name") . ";") }
 :log info ("Default interface: " . $WANinterface . " Internet interfaces: " . $sIntInterface);
