@@ -1,10 +1,11 @@
 #DHCP server lease script
-#DHCP lease time should bne reduced - reccomended to 1h (60 minutes)
+#DHCP lease time should be reduced - reccomended to 1h (60 minutes)
 :local vMac;:local vTxt;:local vTxtStr;:local vStatus;:local vHost;:local vComment;:local vAdresa;:local vPrevious;
-# $leaseActMAC is parametar where system set current MAC address
+# $leaseActMAC is parametar where system set the current MAC address
 :set $vMac ($leaseActMAC);
-# vDHCParray has to be set as global in starup script - otherwise it looses value
+# vDHCParray has to be set as global in startup script - otherwise it looses value
 :global vDHCParray;
+:global sendmessage;
 :set $vTxt ([/ip dhcp-server lease print as value where mac-address=$vMac]);
 :set $vTxt ([:pick $vTxt 0]);
 :set $vStatus ($vTxt -> "status");
