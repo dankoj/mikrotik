@@ -1,4 +1,5 @@
 #DHCP_alert - script to signal if any additional DHCP server on the network
+:global sendmessage;
 :local txtAlert;:local rMacAdd;
 :set $txtAlert ("Router $[ /system identity get name] DHCP server ALERT $[/system clock get date] $[/system clock get time]");
 foreach int in=[/ip dhcp-server alert find] do={
