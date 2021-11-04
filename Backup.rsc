@@ -138,8 +138,8 @@ if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "PPP acti
 	" Attachments: $[:tostr ($aFiles)]"	);    
 :delay 5;
 :do {/tool e-mail send to=$eAddress subject=($rName . " Mikrotik Backup " . $vDate . [/system clock get time]) file=$aFiles body=$strBody}
-:delay 10;
-#Delete all temporary files
+:delay 15;
+#Delete all temporary files (email processing could be slow)
 :foreach sFile in=$aFiles do={/file remove [/file find name=$sFile];};
 $sendmessage ("$rName Mikrotik backup email status: " . [/tool e-mail get last-status]);
 :log info ("Backup script ended");
