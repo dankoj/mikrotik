@@ -1,0 +1,21 @@
+:global sendmessage;
+:local cloudBackupPASS "password";
+:local backupInfo;
+:local backupFile;
+:foreach backupFile in=[/system backup cloud find] do={
+  :set $backupInfo [/system backup cloud get $backupFile];
+  :log info "Cloud backup old (to remove): $[:tostr $backupInfo]";
+  :delay 5;
+  :system backup cloud remove-file $backupFile;
+  :delay 5;
+}
+:do {
+:system/backup/cloud upload-file action=create-and-upload password=$cloudBackupPASS;
+    } on-error={:log info "system/backup/cloud failed"
+                       $sendmessage ("Router $[/system identity get name] $[/system clock get date] $[/system clock get time] System/Backup/CLOUD failed");  };
+:delay 10
+:foreach backupFile in=[/system backup cloud find] do={
+  :set $backupInfo [/system backup cloud get $backupFile];
+  :log info "Cloud backup new: $[:tostr $backupInfo]";
+   $sendmessage ("Router $[/system identity get name] $[/system clock get date] $[/system clock get time] Cloud BACKUP status: $[:tostr $backupInfo]");  };
+}
