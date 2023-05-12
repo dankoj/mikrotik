@@ -1,6 +1,7 @@
 #Mikrotik script to backup RouterOS to email address containing key info on the router
 #Backups are attached to the email, as well as system log
 #This script should be scheduled to run daily/weekly
+#Version 12.05.2023 for RouterOS 7.9
 #Set email address here:
 :local eAddress "email@domain.com";
 #You need to configure /tool e-mail
@@ -18,11 +19,9 @@ $sendmessage ("Mikrotik " . $rName . " backup start to: " . $eAddress);
 :local sNewLine ("\r\n");
 :log info ("$rName" . " Mikrotik backup " . $vDate . " " . [/system clock get time] . " START");
 :delay 3;
-:local voltage [/system health get voltage];
-:set $voltage ([:pick $voltage 0 2] . "." . [:pick $voltage 2 3]);
+:local voltage [:tostr [/system health get [find name="voltage"] value]];
 :local strBody ($rName  . " Backup " . $vDate . " " . [/system clock get time] );
 #Email body containing info on the router
-:set $strBody ($strBody . $sNewLine . "Temp: $[/system health get temperature]C pow: " . voltage ."V");
 /system package update check-for-updates once
 :delay 3;
 :set $strBody ($strBody . $sNewLine . "OS-ver: " . [:system package update get installed-version] . \
@@ -44,17 +43,11 @@ $sendmessage ("Mikrotik " . $rName . " backup start to: " . $eAddress);
 :set $strBody ($strBody . $sNewLine . "Ver: " . ($aSysInfo->"version") . ", Build: " . ($aSysInfo->"build-time"));
 :set aSysInfo ([/system license print as-value]);
 :set $strBody ($strBody . $sNewLine . "Licence: " . ($aSysInfo->"nlevel") . ", id: " . ($aSysInfo->"software-id") . ", Features: " . ($aSysInfo->"features"));
+:set $strBody ($strBody . $sNewLine . "Temp: $[/system health get [find name="temperature"] value]C power: " . voltage . "V");
 :set $strBody ($strBody . $sNewLine . $sNewLine . "User accounts: " . [user print count-only as-value]);
 :foreach int in=[/user find disabled=no] do={
 	:set $strBody ($strBody . $sNewLine . "$[/user get $int name] ($[/user get $int group]) last: $[:tostr ([/user get $int last-logged-in])]"); };
-:local sWANinterface "";
-:local gatewayStatus [:tostr [/ip route get [:pick [find dst-address=0.0.0.0/0 active=yes] 0] gateway-status]];
-:local sINTf [:find $gatewayStatus " reachable via" -1];
-:if ($sINTf > 1) do={:set $sWANinterface [:pick $gatewayStatus ($sINTf +  16) 255]};
-:local scurrentWANIP;
-:do {:set $scurrentWANIP ([/ip address get [find interface=$sWANinterface] address])} on-error={:log info "WAN interface find failed"};
-:set $strBody ($strBody . $sNewLine . $sNewLine . "WAN interface: " . [:tostr $sWANinterface] . ", IP: " . $scurrentWANIP);
-:set $strBody ($strBody . "; Public IP: " . ([/ip cloud get public-address]));
+:set $strBody ($strBody . $sNewLine . $sNewLine . "Public IP: " . ([/ip cloud get public-address]));
 :set $strBody ($strBody . $sNewLine . "DDNS: $[/ip cloud get ddns-enabled]: $[/ip cloud get dns-name]   ");
 :set $strBody ($strBody . $sNewLine . "IP Firewalls: RAWs: $[/ip firewall raw print count-only as-value where disabled=no], FILTERs: $[/ip firewall filter print count-only as-value where disabled=no], NATs: $[/ip firewall nat print count-only as-value where disabled=no], MANGLEs: $[/ip firewall mangle print count-only as-value where disabled=no], ALISTs: $[/ip firewall address-list print count-only as-value], LAYER7s: $[/ip firewall layer7-protocol print count-only as-value where disabled=no]")
 :set $strBody ($strBody . $sNewLine . $sNewLine . "Interfaces: ");
@@ -69,22 +62,26 @@ $sendmessage ("Mikrotik " . $rName . " backup start to: " . $eAddress);
 :set $strBody ($strBody . $sNewLine . $sNewLine . "Switch ports: ");
 :do {
 	:foreach int in=[/interface ethernet switch port find] do={
-	:set $strBody ($strBody . $sNewLine . "$[/interface ethernet switch port get $int switch]/$[/interface ethernet switch port get $int name], VLAN: $[/interface ethernet switch port get $int default-vlan-id]");
+	:set $strBody ($strBody . $sNewLine . "$[/interface ethernet switch port get $int switch]/$[/interface ethernet switch port get $int name]");
 };	} on-error={:log info "Interface SWITCH ports find failed"};
 :set $strBody ($strBody . $sNewLine . $sNewLine . "IP addresses: ");
 :foreach int in=[/ip address find disabled=no] do={
-	:set $strBody ($strBody . $sNewLine . "$[/ip address get $int address] - Iface: $[/ip address get $int interface] - Net: $[/ip address get $int network]"); };
+	:set $strBody ($strBody . $sNewLine . "$[/ip address get $int address] -  $[/ip address get $int interface] -Net: $[/ip address get $int network]"); };
 :set $strBody ($strBody . $sNewLine . $sNewLine . "IP Services: ");
 :foreach int in=[/ip service find disabled=no] do={
 	:set $strBody ($strBody . $sNewLine . "$[/ip service get $int name], Port: $[/ip service get $int port], IP: $[/ip service get $int address]"); };
+
 :set $strBody ($strBody . $sNewLine . $sNewLine . "IP Routes: ");
-:foreach int in=[/ip route find disabled=no] do={
-    :set $strBody ($strBody . $sNewLine . "$[/ip route get $int dst-address] - $[/ip route get $int gateway-status]"); };
+:foreach int in=[/ip route find active=yes] do={
+    :set $strBody ($strBody . $sNewLine . "$[/ip route get $int dst-address] - $[/ip route get $int immediate-gw]"); };
+
 :set $strBody ($strBody . $sNewLine . $sNewLine . "Neighbors: ");
 :do {
 	:foreach int in=[/ip neighbor find] do={
 	:set $strBody ($strBody . $sNewLine . "$[/ip neighbor get $int identity] ($[/ip neighbor get $int address])");    
 };	} on-error={:log info "IP Neighbor find failed"};
+
+
 :local strAdd "";
 :do {
 	:foreach int in=[/interface wireless find disabled=no] do={
@@ -98,6 +95,7 @@ $sendmessage ("Mikrotik " . $rName . " backup start to: " . $eAddress);
 	:foreach int in=[/interface lte find disabled=no] do={
 	:set $strAdd ($strAdd . $sNewLine . [/interface lte get $int name] . ", Net-mode: $[/interface lte get $int network-mode], APN: $[/interface lte get $int apn-profiles]");
 };	} on-error={:log info "Interface LTE find failed"};
+
 if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "Wireless: " . $strAdd)};
 :set strAdd ("");
 :do {
@@ -132,14 +130,19 @@ if ($strAdd!="") do={:set $strBody ($strBody . $sNewLine . $sNewLine . "PPP acti
 :set $aFiles ($aFiles, $logFile);
 :log info ("$rName Mikrotik backup " . $vDate . " $[/system clock get time]" . \
     " Len (body): $[:len $strBody]" . \
-	" Temperature: $[/system health get temperature]C power: " . voltage ."V" . \
+	"Temperature: $[/system health get [find name="temperature"] value]C power: " . voltage . "V" . \
 	" SysLog memory lines: " . $curLines . "/" . $totLines . \
 	" User accounts: " . [user print count-only as-value] . \
 	" Attachments: $[:tostr ($aFiles)]"	);    
 :delay 5;
+#:system/backup/cloud remove-file 0;
+:delay 5;
 :do {/tool e-mail send to=$eAddress subject=($rName . " Mikrotik Backup " . $vDate . [/system clock get time]) file=$aFiles body=$strBody}
-:delay 15;
-#Delete all temporary files (email processing could be slow)
+:delay 20;
+#Delete all temporary files
+#:system/backup/cloud upload-file action=create-and-upload password=Jue83jghw;
+:delay 5;
+:log info "Cloud backup: $[/system backup cloud print]";
 :foreach sFile in=$aFiles do={/file remove [/file find name=$sFile];};
 $sendmessage ("$rName Mikrotik backup email status: " . [/tool e-mail get last-status]);
 :log info ("Backup script ended");
